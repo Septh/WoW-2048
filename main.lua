@@ -156,65 +156,6 @@ function addon:OnInitialize()
 	-- Load or create SavedVariables
 	self.db = LibStub('AceDB-3.0'):New('DB2048', db_defaults, true)
 
-	self.db.global.state = self.db.global.state or {}
-	self.db.global.state.grid = {
-		{
-			128, -- [1]
-			64, -- [2]
-			8, -- [3]
-			0, -- [4]
-		}, -- [1]
-		{
-			2, -- [1]
-			8, -- [2]
-			16, -- [3]
-			2, -- [4]
-		}, -- [2]
-		{
-			8, -- [1]
-			2, -- [2]
-			0, -- [3]
-			0, -- [4]
-		}, -- [3]
-		{
-			4, -- [1]
-			0, -- [2]
-			0, -- [3]
-			2, -- [4]
-		} -- [4]
-	}
-
-	-- [[
-	self.db.global.state.grid = {
-		{
-			1024, -- [1]
-			1024, -- [2]
-			0, -- [3]
-			0, -- [4]
-		}, -- [1]
-		{
-			0, -- [1]
-			8, -- [2]
-			4, -- [3]
-			8, -- [4]
-		}, -- [2]
-		{
-			0, -- [1]
-			0, -- [2]
-			0, -- [3]
-			2, -- [4]
-		}, -- [3]
-		{
-			0, -- [1]
-			0, -- [2]
-			0, -- [3]
-			0, -- [4]
-		}, -- [4]
-	}
-	self.db.global.state.won = false
-	self.db.global.state.cont = false
-	-- ]]
-
 	-- Prepare the fonts
 	self.ClearSans14     = make_font('ClearSans14',     'Regular', 14)
 	self.ClearSans20     = make_font('ClearSans20',     'Regular', 20)
@@ -669,7 +610,7 @@ function addon:handle_key(key)
 			p_tile.trans.anim:SetDuration(0.1)
 			p_tile.trans.anim:SetOffset((move.n_col - move.p_col) * (tile_size + gutter_size), (move.n_row - move.p_row) * -(tile_size + gutter_size))
 			p_tile.trans.anim:SetStartDelay(xx * 0.01)			--- nicer
-			p_tile.trans.anim:SetScript('OnFinished', function(this)
+			p_tile.trans.anim:SetScript('OnFinished', function()
 				_anims_count = _anims_count - 1
 
 				-- Update the old position
@@ -685,7 +626,7 @@ function addon:handle_key(key)
 					n_tile.scale.anim:SetDuration(0.1)
 					n_tile.scale.anim:SetScale(1.2, 1.2)
 					n_tile.scale.anim:SetOrigin('CENTER', 0, 0)
-					n_tile.scale.anim:SetScript('OnFinished', function(this)
+					n_tile.scale.anim:SetScript('OnFinished', function()
 						_anims_count = _anims_count - 1
 					end)
 
