@@ -1,4 +1,4 @@
-# This is a beta version. It still needs extended testing and feedback before it goes to release.
+## This is a beta version. It still needs extended testing and feedback before it goes to release.
 
 ---
 # 2048 for World of Warcraft
@@ -20,5 +20,5 @@ Use the arrow buttons to move the tiles. You may also use your keyboard if the o
 
 
 ## TODO:
-* **Better animation**. Blizzard API is really not intended to such things so I even don't know if this is possible at all.
+* **Better animation**. Blizzard API is really not intended for such things so I even don't know if this is possible at all.
 * **Testing**, testing and testing. Thank to anyone who can provide feedback either on [Curse.com](http://mods.curse.com/addons/wow/wow2048) or on [GitHub](https://github.com/Septh/WoW-2048)
