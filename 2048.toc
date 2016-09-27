@@ -2,7 +2,7 @@
 ## Title: 2048
 ## Notes: Play while you wait!
 ## Notes-frFR: Jouez au 2048 entre deux raids !
-## Version: 0.3.0
+## Version: 1.0.0
 ## Author: Septh
 ## DefaultState: disabled
 ## SavedVariables: DB2048
@@ -20,7 +20,6 @@ libs\AceDBOptions-3.0\AceDBOptions-3.0.xml
 libs\AceLocale-3.0\AceLocale-3.0.xml
 libs\AceTimer-3.0\AceTimer-3.0.xml
 
-2048.xml
 locales.lua
 main.lua
 game.lua

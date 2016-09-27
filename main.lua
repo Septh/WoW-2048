@@ -88,20 +88,24 @@ local colors = {
 -- Ace3 DB
 local db_defaults = {
 	global = {
-		scale = 1.0,
-		useKeyboard = true,
-		pos = {
-			p = 'CENTER',
-			x = 0,
-			y = 0,
+		version = 1,
+		frame = {
+			scale = 1.0,
+			useKeyboard = true,
+			pos = {
+				p = 'CENTER',
+				x = 0,
+				y = 0,
+			},
 		},
-		best = 0,
-		state = {
+		game = {
+			best  = 0,
+			moves = 0,
 			score = 0,
 			over  = false,
 			won   = false,
 			cont  = false,
-			grid  = {}
+			grid  = {}	-- Always have a grid, even empty
 		}
 	}
 }
@@ -112,14 +116,39 @@ local config_table = {
 	handler = addon,
 	type = 'group',
 	args = {
+		version = {
+			order = 1,
+			type  = 'description',
+			name  = 'Version 1.0.0' -- GetAddOnMetadata('2048', 'Version') won't work :(
+		},
+
+		punchline = {
+			order = 2,
+			type  = 'description',
+			name  = L['Play while you wait to play!'] .. '\n',
+			fontSize  = 'medium'
+		},
+
+		author = {
+			order = 3,
+			type  = 'description',
+			name  = 'Septh - https://github.com/Septh/WoW-2048'
+		},
+
+		sep = {
+			order = 4,
+			type = 'header',
+			name = ''
+		},
+
 		useKeyboard = {
 			order = 10,
 			type = 'toggle',
 			name = L['Enable keyboard use'],
 			width = 'full',
-			get = function(info) return addon.db.global.useKeyboard end,
+			get = function(info) return addon.db.global.frame.useKeyboard end,
 			set = function(info, value)
-				addon.db.global.useKeyboard = value
+				addon.db.global.frame.useKeyboard = value
 				addon.frame:EnableKeyboard(value)
 			end,
 		},
@@ -131,9 +160,9 @@ local config_table = {
 			max = 2.0,
 			step = 0.05,
 			width = 'full',
-			get = function(info) return addon.db.global.scale end,
+			get = function(info) return addon.db.global.frame.scale end,
 			set = function(info, value)
-				addon.db.global.scale = value
+				addon.db.global.frame.scale = value
 				addon.frame:SetScale(value)
 				end,
 			isPercent = true,
@@ -146,17 +175,20 @@ local config_table = {
 ------------------------------------------------
 function addon:OnInitialize()
 
+	-- Load or create SavedVariables
+	self.db = LibStub('AceDB-3.0'):New('DB2048', db_defaults, true)
+	if (self.db.global.version or 0) ~= 1 then
+		self:Print(L['Old settings reset to defaults - sorry about that.'])
+		self.db:ResetDB('Default')
+	end
+
+	-- Prepare the fonts
 	local function make_font(name, style, size)
 		local f = CreateFont(name)
 		f:SetFont('Interface\\AddOns\\2048\\fonts\\ClearSans\\ClearSans-'..style..'.ttf', size)
 		f:SetTextColor(1, 1, 1, 1)
 		return f
 	end
-
-	-- Load or create SavedVariables
-	self.db = LibStub('AceDB-3.0'):New('DB2048', db_defaults, true)
-
-	-- Prepare the fonts
 	self.ClearSans14     = make_font('ClearSans14',     'Regular', 14)
 	self.ClearSans20     = make_font('ClearSans20',     'Regular', 20)
 	self.ClearSansBold14 = make_font('ClearSansBold14', 'Bold',    14)
@@ -165,9 +197,9 @@ function addon:OnInitialize()
 
 	-- Create the main game frame
 	self.frame = CreateFrame('Frame', nil, UIParent)
-	self.frame:SetPoint(self.db.global.pos.p, self.db.global.pos.x, self.db.global.pos.y)
+	self.frame:SetPoint(self.db.global.frame.pos.p, self.db.global.frame.pos.x, self.db.global.frame.pos.y)
 	self.frame:SetSize(inner_width + (border_size * 2), inner_height + (border_size * 2))
-	self.frame:SetScale(self.db.global.scale)
+	self.frame:SetScale(self.db.global.frame.scale)
 	self.frame:SetBackdrop(plain_bg)
 	self.frame:SetBackdropColor(unpack(colors['bg']['frame']))
 	self.frame:EnableMouse(true)
@@ -196,22 +228,22 @@ function addon:OnInitialize()
 		frame:SetAlpha(0.5)
 		if frame:IsMouseOver() then
 			frame.fadein:Play()
-			frame:EnableKeyboard(addon.db.global.useKeyboard)
+			frame:EnableKeyboard(addon.db.global.frame.useKeyboard)
 		else
 			frame:EnableKeyboard(false)
 		end
 	end)
 	self.frame:SetScript('OnEnter', function(frame)
+		if frame.skipNextEnter then frame.skipNextEnter = nil; return end
 		frame.fadeout:Stop()
 		frame.fadein:Play()
-		frame:EnableKeyboard(addon.db.global.useKeyboard)
+		frame:EnableKeyboard(addon.db.global.frame.useKeyboard)
 	end)
 	self.frame:SetScript('OnLeave', function(frame)
-		if not frame:IsMouseOver() then
-			frame.fadein:Stop()
-			frame.fadeout:Play()
-			frame:EnableKeyboard(false)
-		end
+		if frame:IsMouseOver() then frame.skipNextEnter = true; return end
+		frame.fadein:Stop()
+		frame.fadeout:Play()
+		frame:EnableKeyboard(false)
 	end)
 	self.frame:SetScript('OnDragStart', function(frame, button)
 		frame:StartMoving()
@@ -219,9 +251,9 @@ function addon:OnInitialize()
 	self.frame:SetScript('OnDragStop', function(frame, button)
 		frame:StopMovingOrSizing()
 		local p, rf, rp, x, y = frame:GetPoint()
-		addon.db.global.pos.p = p
-		addon.db.global.pos.x = x
-		addon.db.global.pos.y = y
+		addon.db.global.frame.pos.p = p
+		addon.db.global.frame.pos.x = x
+		addon.db.global.frame.pos.y = y
 	end)
 	self.frame:SetScript('OnKeyDown', function(frame, key)
 		addon:handle_key(key)
@@ -237,56 +269,72 @@ function addon:OnInitialize()
 	self.title:SetJustifyH('LEFT')
 
 	-- scores
-	self.score = {}
-	self.score.bg = self.frame:CreateTexture(nil, 'ARTWORK')
-	self.score.bg:SetPoint('TOPRIGHT', self.title)
-	self.score.bg:SetSize(tile_size, score_height)
-	self.score.bg:SetColorTexture(unpack(colors['bg']['score']))
-	self.score.label = self.frame:CreateFontString(nil, 'ARTWORK')
-	self.score.label:SetPoint('TOP', self.score.bg, 'TOP', 0, -10)
-	self.score.label:SetFontObject(self.ClearSansBold14)
-	self.score.label:SetTextColor(unpack(colors['fg']['score']))
-	self.score.label:SetText('SCORE')
-	self.score.text = self.frame:CreateFontString(nil, 'ARTWORK')
-	self.score.text:SetPoint('BOTTOM', self.score.bg, 'BOTTOM', 0, 10)
-	self.score.text:SetFontObject(self.ClearSansBold14)
-	self.score.text:SetTextColor(unpack(colors['fg']['score']))
-	self.score.text:SetText('0')
-
 	self.best = {}
 	self.best.bg = self.frame:CreateTexture(nil, 'ARTWORK')
-	self.best.bg:SetPoint('TOPRIGHT', self.score.bg, 'TOPLEFT', -gutter_size, 0)
+	self.best.bg:SetPoint('TOPRIGHT', self.title)
 	self.best.bg:SetSize(tile_size, score_height)
 	self.best.bg:SetColorTexture(unpack(colors['bg']['score']))
 	self.best.label = self.frame:CreateFontString(nil, 'ARTWORK')
 	self.best.label:SetPoint('TOP', self.best.bg, 'TOP', 0, -10)
 	self.best.label:SetFontObject(self.ClearSansBold14)
 	self.best.label:SetTextColor(unpack(colors['fg']['score']))
-	self.best.label:SetText('BEST')
+	self.best.label:SetText(L['BEST'])
 	self.best.text = self.frame:CreateFontString(nil, 'ARTWORK')
 	self.best.text:SetPoint('BOTTOM', self.best.bg, 'BOTTOM', 0, 10)
 	self.best.text:SetFontObject(self.ClearSansBold14)
 	self.best.text:SetTextColor(unpack(colors['fg']['score']))
 	self.best.text:SetText('0')
 
-	-- base line
-	self.baseline = self.frame:CreateFontString(nil, 'ARTWORK')
-	self.baseline:SetPoint('TOPLEFT', self.title, 'BOTTOMLEFT')
-	self.baseline:SetSize(inner_width, intro_height)
-	self.baseline:SetFontObject(self.ClearSans14)
-	self.baseline:SetTextColor(unpack(colors['fg']['info']))
-	self.baseline:SetJustifyH('LEFT')
-	self.baseline:SetText(L['Join the numbers and get to the |cFFFF00002048|r tile!'])
+	self.score = {}
+	self.score.bg = self.frame:CreateTexture(nil, 'ARTWORK')
+	self.score.bg:SetPoint('TOPRIGHT', self.best.bg, 'TOPLEFT', -gutter_size / 2, 0)
+	self.score.bg:SetSize(tile_size, score_height)
+	self.score.bg:SetColorTexture(unpack(colors['bg']['score']))
+	self.score.label = self.frame:CreateFontString(nil, 'ARTWORK')
+	self.score.label:SetPoint('TOP', self.score.bg, 'TOP', 0, -10)
+	self.score.label:SetFontObject(self.ClearSansBold14)
+	self.score.label:SetTextColor(unpack(colors['fg']['score']))
+	self.score.label:SetText(L['SCORE'])
+	self.score.text = self.frame:CreateFontString(nil, 'ARTWORK')
+	self.score.text:SetPoint('BOTTOM', self.score.bg, 'BOTTOM', 0, 10)
+	self.score.text:SetFontObject(self.ClearSansBold14)
+	self.score.text:SetTextColor(unpack(colors['fg']['score']))
+	self.score.text:SetText('0')
+
+	self.moves = {}
+	self.moves.bg = self.frame:CreateTexture(nil, 'ARTWORK')
+	self.moves.bg:SetPoint('TOPRIGHT', self.score.bg, 'TOPLEFT', -gutter_size / 2, 0)
+	self.moves.bg:SetSize(tile_size, score_height)
+	self.moves.bg:SetColorTexture(unpack(colors['bg']['score']))
+	self.moves.label = self.frame:CreateFontString(nil, 'ARTWORK')
+	self.moves.label:SetPoint('TOP', self.moves.bg, 'TOP', 0, -10)
+	self.moves.label:SetFontObject(self.ClearSansBold14)
+	self.moves.label:SetTextColor(unpack(colors['fg']['score']))
+	self.moves.label:SetText(L['MOVES'])
+	self.moves.text = self.frame:CreateFontString(nil, 'ARTWORK')
+	self.moves.text:SetPoint('BOTTOM', self.moves.bg, 'BOTTOM', 0, 10)
+	self.moves.text:SetFontObject(self.ClearSansBold14)
+	self.moves.text:SetTextColor(unpack(colors['fg']['score']))
+	self.moves.text:SetText('0')
+
+	-- punch line
+	self.punchline = self.frame:CreateFontString(nil, 'ARTWORK')
+	self.punchline:SetPoint('TOPLEFT', self.title, 'BOTTOMLEFT')
+	self.punchline:SetSize(inner_width, intro_height)
+	self.punchline:SetFontObject(self.ClearSans14)
+	self.punchline:SetTextColor(unpack(colors['fg']['info']))
+	self.punchline:SetJustifyH('LEFT')
+	self.punchline:SetText(L['Join the numbers and get to the |cFFFF00002048|r tile!'])
 
 	-- board
 	self.board = self.frame:CreateTexture(nil, 'BACKGROUND', nil, 2)
-	self.board:SetPoint('TOP', self.baseline, 'BOTTOM', 0, -10)
+	self.board:SetPoint('TOP', self.punchline, 'BOTTOM', 0, -10)
 	self.board:SetSize(board_width, board_height)
 	self.board:SetColorTexture(unpack(colors['bg']['board']))
 	local x, y = gutter_size, -gutter_size
 	for row = 1, grid_size do
 		for col = 1, grid_size do
-			local bg = self.frame:CreateTexture(nil, 'BAKCGROUND', nil, 3)
+			local bg = self.frame:CreateTexture(nil, 'BACKGROUND', nil, 3)
 			bg:SetPoint('TOPLEFT', self.board, x, y)
 			bg:SetSize(tile_size, tile_size)
 			bg:SetColorTexture(unpack(colors['bg']['tiles'][0]))
@@ -314,32 +362,6 @@ function addon:OnInitialize()
 			t.s:SetFontObject(self.ClearSansBold20)
 			t.s:SetAllPoints(t)
 			t.s:SetText(" ")
-
-			--[[
-				local b = CreateFrame('Button', nil, t)
-				b:SetPoint('TOPLEFT', t, 0, 0)
-				b:SetSize(tile_size, tile_size)
-				b:SetFrameLevel(b:GetFrameLevel() + 10)
-
-				b.s = b:CreateFontString(nil, 'ARTWORK')
-				b.s:SetFontObject(GameFontNormal)
-				b.s:SetPoint('TOPLEFT', t)
-				b.s:SetAlpha(0.3)
-				b.s:SetFormattedText("#%d (%d,%d)", ((row-1) * grid_size) + col, row, col)
-
-				b.col = col
-				b.row = row
-				b:RegisterForClicks('AnyUp')
-				b:SetScript('OnClick', function(self, button)
-					local cell = addon.game:get_cell(self.row, self.col)
-					if button == 'RightButton' then
-						cell.value = 0
-					else
-						cell.value = max(cell.value, 1) * 2
-					end
-					addon:update_tile(self.row, self.col)
-				end)
-			--]]
 
 			-- Each tile must have its own animation groups!
 			t.trans = t:CreateAnimationGroup()
@@ -409,8 +431,9 @@ function addon:OnInitialize()
 	self.msgbox.frame:SetAllPoints(self.board)
 	self.msgbox.frame:SetBackdrop(plain_bg)
 	self.msgbox.frame:SetBackdropColor(unpack(colors['bg']['msgbox']['msg']))
-	self.msgbox.frame:SetFrameStrata('HIGH')
+	self.msgbox.frame:SetFrameLevel(self.frame:GetFrameLevel() + 10)
 	self.msgbox.frame:Hide()
+
 	self.msgbox.text = self.msgbox.frame:CreateFontString(nil, 'ARTWORK')
 	self.msgbox.text:SetAllPoints(self.board)
 	self.msgbox.text:SetPoint('TOPLEFT', self.board, 'TOPLEFT', 0, -tile_size)
@@ -473,14 +496,24 @@ function addon:OnEnable()
 
 	-- Initialize the game
 	self.game = self:GetModule('game')
-	self.game:new_game(self.db.global.state, grid_size)
+	self.game:restore_game(self.db.global.game)
 
 	-- Draw the board
 	self:update()
+
+	-- Saved game was won?
+	if self.game:is_won() then
+		self:show_message_box('MSG_WON')
+
+	-- Or over?
+	elseif self.game:is_over() then
+		self:show_message_box('MSG_LOST')
+	end
 end
 
 ------------------------------------------------
 -- Toggle the frame
+------------------------------------------------
 function addon:ToggleGameBoard()
 
 	if self.frame:IsShown() then
@@ -492,6 +525,7 @@ end
 
 ------------------------------------------------
 -- Display a message and wait for an answer
+------------------------------------------------
 function addon:show_message_box(msg)
 
 	-- Remember which question was asked
@@ -507,7 +541,7 @@ function addon:show_message_box(msg)
 	end
 
 	self.msgbox.frame:Show()
-	UIFrameFadeIn(self.msgbox.frame, 0.3, 0, 1)
+	UIFrameFadeIn(self.msgbox.frame, 0.3, 0, 0.9)
 end
 
 ------------------------------------------------
@@ -518,22 +552,23 @@ function addon:handle_message_button(button)
 
 	if self.msgbox.q == 'MSG_WON' then
 		if button == 1 then
-			self.game:new_game(nil, grid_size)
+			self.game:new_game()
+			self:update()
 		else
 			self.game:keep_playing()
+			self:prepare_next_turn()
 		end
 
 	elseif self.msgbox.q == 'MSG_LOST' then
-		self.game:new_game(nil, grid_size)
+		self.game:new_game()
+		self:update()
 
 	elseif self.msgbox.q == 'MSG_RESTART' then
 		if button == 1 then
-			self.game:new_game(nil, grid_size)
+			self.game:new_game()
+			self:update()
 		end
 	end
-
-	-- Redraw the board
-	self:update()
 end
 
 ------------------------------------------------
@@ -549,13 +584,15 @@ end
 
 ------------------------------------------------
 function addon:update_scores()
-	self.score.text:SetText(self.game:get_score())
-	self.best.text:SetText(self.db.global.best)
+	local moves, score, best = self.game:get_scores()
+
+	self.moves.text:SetText(moves)
+	self.score.text:SetText(score)
+	self.best.text:SetText(best)
 end
 
 ------------------------------------------------
 function addon:update_board()
-
 	for row = 1, grid_size do
 		for col = 1, grid_size do
 			self:update_tile(row, col)
@@ -565,10 +602,9 @@ end
 
 ------------------------------------------------
 function addon:update_tile(row, col)
-
-	local tile = self.tiles[row..'x'..col]
 	local cell = self.game:get_cell(row, col)
-	local val  = cell.value
+	local val  = cell.val
+	local tile = self.tiles[row..'x'..col]
 
 	-- Set the value
 	tile.s:SetText(val > 0 and val or ' ')
@@ -578,7 +614,7 @@ function addon:update_tile(row, col)
 	tile.s:SetTextColor(unpack(colors['fg']['tiles'][val]))
 	tile:SetBackdropColor(unpack(colors['bg']['tiles'][val]))
 
-	-- Restore frame level after animation
+	-- Restore the tile's frame level after animation
 	tile:SetFrameLevel(self.frame:GetFrameLevel() + 1)
 end
 
@@ -591,7 +627,10 @@ function addon:handle_key(key)
 
 	if self.msgbox.frame:IsShown() then return end
 
-	if key == 'RESTART' then
+	if key == 'ESCAPE' then
+		self:ToggleGameBoard()
+
+	elseif key == 'RESTART' then
 		self:show_message_box('MSG_RESTART')
 
 	elseif _keys[key] then
@@ -599,82 +638,74 @@ function addon:handle_key(key)
 		local moves = self.game:move_cells(key)
 
 		-- Animate those tiles that were actually moved
-		_anims_count = 0
-		for xx, move in ipairs(moves) do
+		if #moves > 0 then
+			_anims_count = 0
+			for xx, move in ipairs(moves) do
 
-			local n_tile = self.tiles[move.n_row..'x'..move.n_col]
-			local p_tile = self.tiles[move.p_row..'x'..move.p_col]
+				local p_tile = self.tiles[move.p_row..'x'..move.p_col]
+				local n_tile = self.tiles[move.n_row..'x'..move.n_col]
 
-			-- Transition the tiles from their previous position to the current
-			p_tile:SetFrameLevel(p_tile:GetFrameLevel() + 2)	-- Make sure moving tiles are above the others
-			p_tile.trans.anim:SetDuration(0.1)
-			p_tile.trans.anim:SetOffset((move.n_col - move.p_col) * (tile_size + gutter_size), (move.n_row - move.p_row) * -(tile_size + gutter_size))
-			p_tile.trans.anim:SetStartDelay(xx * 0.01)			--- nicer
-			p_tile.trans.anim:SetScript('OnFinished', function()
-				_anims_count = _anims_count - 1
+				-- Transition the tiles from their previous position to the new
+				p_tile:SetFrameLevel(p_tile:GetFrameLevel() + 2)	-- Make sure moving tiles are above the others
+				p_tile.trans.anim:SetDuration(0.1)
+				p_tile.trans.anim:SetOffset((move.n_col - move.p_col) * (tile_size + gutter_size), (move.n_row - move.p_row) * (tile_size + gutter_size) * -1)
+				p_tile.trans.anim:SetStartDelay(xx * 0.01)			--- nicer
+				p_tile.trans.anim:SetScript('OnFinished', function()
+					_anims_count = _anims_count - 1
 
-				-- Update the old position
-				addon.game:set_cell_value(move.p_row, move.p_col, 0)
-				addon:update_tile(move.p_row, move.p_col)
+					-- Update the old position
+					addon.game:set_cell_value(move.p_row, move.p_col, 0)
+					addon:update_tile(move.p_row, move.p_col)
 
-				-- then the new one
-				addon.game:set_cell_value(move.n_row, move.n_col, move.n_val)
-				addon:update_tile(move.n_row, move.n_col)
+					-- then the new one
+					addon.game:set_cell_value(move.n_row, move.n_col, move.n_val)
+					addon:update_tile(move.n_row, move.n_col)
 
-				-- Pulse?
-				if move.merged then
-					n_tile.scale.anim:SetDuration(0.1)
-					n_tile.scale.anim:SetScale(1.2, 1.2)
-					n_tile.scale.anim:SetOrigin('CENTER', 0, 0)
-					n_tile.scale.anim:SetScript('OnFinished', function()
-						_anims_count = _anims_count - 1
-					end)
+					-- Pulse?
+					if move.merged then
+						n_tile.scale.anim:SetDuration(0.1)
+						n_tile.scale.anim:SetScale(1.2, 1.2)
+						n_tile.scale.anim:SetOrigin('CENTER', 0, 0)
+						n_tile.scale.anim:SetScript('OnFinished', function()
+							_anims_count = _anims_count - 1
+						end)
 
-					_anims_count = _anims_count + 1
-					n_tile.scale:Play()
-				end
-			end)
-			_anims_count = _anims_count + 1
-			p_tile.trans:Play()
+						_anims_count = _anims_count + 1
+						n_tile.scale:Play()
+					end
+				end)
+				_anims_count = _anims_count + 1
+				p_tile.trans:Play()
+			end
+
+			-- Redraw the game and wait for user input
+			self:prepare_next_turn()
 		end
-
-		-- Wait for all animations to end
-		self:prepare_next_turn()
-
-	elseif key == 'ESCAPE' then
-		self:ToggleGameBoard()
 	end
-
 end
 
 ------------------------------------------------
 -- Prepare for next turn
+------------------------------------------------
 function addon:prepare_next_turn()
 
+	-- Wait for all anims to finish
 	if _anims_count > 0 then
 		self:ScheduleTimer('prepare_next_turn', 0.1)
 		return
 	end
 
-	-- Get the score
-	local score = self.game:get_score()
-	if score > self.db.global.best then
-		self.db.global.best = score
-	end
-
-	-- Redraw the board
+	-- Make everything up-to-date, save the game's current state and redraw the board
 	self.game:next_turn()
+	self.game:save_state(self.db.global.game)
 	self:update()
 
-	-- Game over?
-	if self.game:is_over() then
-		self:show_message_box('MSG_LOST')
-
 	-- Game won?
-	elseif self.game:is_won() then
+	if self.game:is_won() then
 		self:show_message_box('MSG_WON')
-	end
 
-	-- Save current state
-	self.game:save_state(self.db.global.state)
+	-- Game over?
+	elseif self.game:is_over() then
+		self:show_message_box('MSG_LOST')
+	end
 end
