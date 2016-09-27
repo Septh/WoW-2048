@@ -4,7 +4,6 @@
 ## Notes-frFR: Jouez au 2048 entre deux raids !
 ## Version: 1.0.0
 ## Author: Septh
-## DefaultState: disabled
 ## SavedVariables: DB2048
 
 libs\LibStub\LibStub.lua
