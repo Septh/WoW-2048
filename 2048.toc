@@ -2,7 +2,7 @@
 ## Title: 2048
 ## Notes: Play while you wait!
 ## Notes-frFR: Jouez au 2048 entre deux raids !
-## Version: 1.0.0
+## Version: 1.1.0
 ## Author: Septh
 ## SavedVariables: DB2048
 
