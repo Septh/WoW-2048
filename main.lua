@@ -16,8 +16,10 @@ local score_height = 60
 local intro_height = 30
 local pad_size     = 24 * 3
 local inner_width  = board_width
-local inner_height = max(title_height, score_height) + intro_height + 10 + board_height + 10 + pad_size
+local inner_height = math.max(title_height, score_height) + intro_height + 10 + board_height + 10 + pad_size
 local border_size  = 10
+local frame_width  = inner_width + (border_size * 2)
+local frame_height = inner_height + (border_size * 2)	-- Full height, including pad
 
 -- Message box
 local messages = {
@@ -88,10 +90,11 @@ local colors = {
 -- Ace3 DB
 local db_defaults = {
 	global = {
-		version = 1,
+		version = 1.1,
 		frame = {
 			scale = 1.0,
 			useKeyboard = true,
+			usePad = true,
 			pos = {
 				p = 'CENTER',
 				x = 0,
@@ -116,17 +119,17 @@ local config_table = {
 	handler = addon,
 	type = 'group',
 	args = {
-		version = {
-			order = 1,
-			type  = 'description',
-			name  = 'Version 1.0.0' -- GetAddOnMetadata('2048', 'Version') won't work :(
-		},
-
 		punchline = {
-			order = 2,
+			order = 1,
 			type  = 'description',
 			name  = L['Play while you wait to play!'] .. '\n',
 			fontSize  = 'medium'
+		},
+
+		version = {
+			order = 2,
+			type  = 'description',
+			name  = 'Version 1.0.0' -- GetAddOnMetadata('2048', 'Version') won't work :(
 		},
 
 		author = {
@@ -145,13 +148,40 @@ local config_table = {
 			order = 10,
 			type = 'toggle',
 			name = L['Enable keyboard use'],
-			width = 'full',
 			get = function(info) return addon.db.global.frame.useKeyboard end,
 			set = function(info, value)
 				addon.db.global.frame.useKeyboard = value
 				addon.frame:EnableKeyboard(value)
 			end,
 		},
+		useKeyboard_crlf = {
+			order = 11,
+			type = 'description',
+			name = ''
+		},
+
+		usePad = {
+			order = 15,
+			type = 'toggle',
+			name = L['Enable pad'],
+			get = function(info) return addon.db.global.frame.usePad end,
+			set = function(info, value)
+				addon.db.global.frame.usePad = value
+				if value then
+					addon.frame:SetHeight(frame_height)
+					addon.frame.pad:Show()
+				else
+					addon.frame.pad:Hide()
+					addon.frame:SetHeight(frame_height - pad_size)
+				end
+			end,
+		},
+		usePad_crlf = {
+			order = 16,
+			type = 'description',
+			name = ''
+		},
+
 		scale = {
 			order = 20,
 			type = 'range',
@@ -177,10 +207,7 @@ function addon:OnInitialize()
 
 	-- Load or create SavedVariables
 	self.db = LibStub('AceDB-3.0'):New('DB2048', db_defaults, true)
-	if (self.db.global.version or 0) ~= 1 then
-		self:Print(L['Old settings reset to defaults - sorry about that.'])
-		self.db:ResetDB('Default')
-	end
+	if math.floor(self.db.global.version or 0) ~= 1 then self:import_old_settings() end
 
 	-- Prepare the fonts
 	local function make_font(name, style, size)
@@ -198,7 +225,7 @@ function addon:OnInitialize()
 	-- Create the main game frame
 	self.frame = CreateFrame('Frame', nil, UIParent)
 	self.frame:SetPoint(self.db.global.frame.pos.p, self.db.global.frame.pos.x, self.db.global.frame.pos.y)
-	self.frame:SetSize(inner_width + (border_size * 2), inner_height + (border_size * 2))
+	self.frame:SetSize(frame_width, frame_height)
 	self.frame:SetScale(self.db.global.frame.scale)
 	self.frame:SetBackdrop(plain_bg)
 	self.frame:SetBackdropColor(unpack(colors['bg']['frame']))
@@ -260,82 +287,82 @@ function addon:OnInitialize()
 	end)
 
 	-- title
-	self.title = self.frame:CreateFontString(nil, 'ARTWORK')
-	self.title:SetFontObject(self.ClearSansBold32)
-	self.title:SetPoint('TOPLEFT', border_size, -border_size)
-	self.title:SetSize(inner_width, title_height)
-	self.title:SetText('2048')
-	self.title:SetTextColor(unpack(colors['fg']['title']))
-	self.title:SetJustifyH('LEFT')
+	self.frame.title = self.frame:CreateFontString(nil, 'ARTWORK')
+	self.frame.title:SetFontObject(self.ClearSansBold32)
+	self.frame.title:SetPoint('TOPLEFT', border_size, -border_size)
+	self.frame.title:SetSize(inner_width, title_height)
+	self.frame.title:SetText('2048')
+	self.frame.title:SetTextColor(unpack(colors['fg']['title']))
+	self.frame.title:SetJustifyH('LEFT')
 
 	-- scores
-	self.best = {}
-	self.best.bg = self.frame:CreateTexture(nil, 'ARTWORK')
-	self.best.bg:SetPoint('TOPRIGHT', self.title)
-	self.best.bg:SetSize(tile_size, score_height)
-	self.best.bg:SetColorTexture(unpack(colors['bg']['score']))
-	self.best.label = self.frame:CreateFontString(nil, 'ARTWORK')
-	self.best.label:SetPoint('TOP', self.best.bg, 'TOP', 0, -10)
-	self.best.label:SetFontObject(self.ClearSansBold14)
-	self.best.label:SetTextColor(unpack(colors['fg']['score']))
-	self.best.label:SetText(L['BEST'])
-	self.best.text = self.frame:CreateFontString(nil, 'ARTWORK')
-	self.best.text:SetPoint('BOTTOM', self.best.bg, 'BOTTOM', 0, 10)
-	self.best.text:SetFontObject(self.ClearSansBold14)
-	self.best.text:SetTextColor(unpack(colors['fg']['score']))
-	self.best.text:SetText('0')
+	self.frame.best = {}
+	self.frame.best.bg = self.frame:CreateTexture(nil, 'BACKGROUND', nil, 1)
+	self.frame.best.bg:SetPoint('TOPRIGHT', -border_size, -border_size)
+	self.frame.best.bg:SetSize(tile_size, score_height)
+	self.frame.best.bg:SetColorTexture(unpack(colors['bg']['score']))
+	self.frame.best.label = self.frame:CreateFontString(nil, 'ARTWORK')
+	self.frame.best.label:SetPoint('TOP', self.frame.best.bg, 'TOP', 0, -10)
+	self.frame.best.label:SetFontObject(self.ClearSansBold14)
+	self.frame.best.label:SetTextColor(unpack(colors['fg']['score']))
+	self.frame.best.label:SetText(L['BEST'])
+	self.frame.best.text = self.frame:CreateFontString(nil, 'ARTWORK')
+	self.frame.best.text:SetPoint('BOTTOM', self.frame.best.bg, 'BOTTOM', 0, 10)
+	self.frame.best.text:SetFontObject(self.ClearSansBold14)
+	self.frame.best.text:SetTextColor(unpack(colors['fg']['score']))
+	self.frame.best.text:SetText('0')
 
-	self.score = {}
-	self.score.bg = self.frame:CreateTexture(nil, 'ARTWORK')
-	self.score.bg:SetPoint('TOPRIGHT', self.best.bg, 'TOPLEFT', -gutter_size / 2, 0)
-	self.score.bg:SetSize(tile_size, score_height)
-	self.score.bg:SetColorTexture(unpack(colors['bg']['score']))
-	self.score.label = self.frame:CreateFontString(nil, 'ARTWORK')
-	self.score.label:SetPoint('TOP', self.score.bg, 'TOP', 0, -10)
-	self.score.label:SetFontObject(self.ClearSansBold14)
-	self.score.label:SetTextColor(unpack(colors['fg']['score']))
-	self.score.label:SetText(L['SCORE'])
-	self.score.text = self.frame:CreateFontString(nil, 'ARTWORK')
-	self.score.text:SetPoint('BOTTOM', self.score.bg, 'BOTTOM', 0, 10)
-	self.score.text:SetFontObject(self.ClearSansBold14)
-	self.score.text:SetTextColor(unpack(colors['fg']['score']))
-	self.score.text:SetText('0')
+	self.frame.score = {}
+	self.frame.score.bg = self.frame:CreateTexture(nil, 'BACKGROUND', nil, 1)
+	self.frame.score.bg:SetPoint('TOPRIGHT', self.frame.best.bg, 'TOPLEFT', -1, 0)
+	self.frame.score.bg:SetSize(tile_size, score_height)
+	self.frame.score.bg:SetColorTexture(unpack(colors['bg']['score']))
+	self.frame.score.label = self.frame:CreateFontString(nil, 'ARTWORK')
+	self.frame.score.label:SetPoint('TOP', self.frame.score.bg, 'TOP', 0, -10)
+	self.frame.score.label:SetFontObject(self.ClearSansBold14)
+	self.frame.score.label:SetTextColor(unpack(colors['fg']['score']))
+	self.frame.score.label:SetText(L['SCORE'])
+	self.frame.score.text = self.frame:CreateFontString(nil, 'ARTWORK')
+	self.frame.score.text:SetPoint('BOTTOM', self.frame.score.bg, 'BOTTOM', 0, 10)
+	self.frame.score.text:SetFontObject(self.ClearSansBold14)
+	self.frame.score.text:SetTextColor(unpack(colors['fg']['score']))
+	self.frame.score.text:SetText('0')
 
-	self.moves = {}
-	self.moves.bg = self.frame:CreateTexture(nil, 'ARTWORK')
-	self.moves.bg:SetPoint('TOPRIGHT', self.score.bg, 'TOPLEFT', -gutter_size / 2, 0)
-	self.moves.bg:SetSize(tile_size, score_height)
-	self.moves.bg:SetColorTexture(unpack(colors['bg']['score']))
-	self.moves.label = self.frame:CreateFontString(nil, 'ARTWORK')
-	self.moves.label:SetPoint('TOP', self.moves.bg, 'TOP', 0, -10)
-	self.moves.label:SetFontObject(self.ClearSansBold14)
-	self.moves.label:SetTextColor(unpack(colors['fg']['score']))
-	self.moves.label:SetText(L['MOVES'])
-	self.moves.text = self.frame:CreateFontString(nil, 'ARTWORK')
-	self.moves.text:SetPoint('BOTTOM', self.moves.bg, 'BOTTOM', 0, 10)
-	self.moves.text:SetFontObject(self.ClearSansBold14)
-	self.moves.text:SetTextColor(unpack(colors['fg']['score']))
-	self.moves.text:SetText('0')
+	self.frame.moves = {}
+	self.frame.moves.bg = self.frame:CreateTexture(nil, 'BACKGROUND', nil, 1)
+	self.frame.moves.bg:SetPoint('TOPRIGHT', self.frame.score.bg, 'TOPLEFT', -1, 0)
+	self.frame.moves.bg:SetSize(tile_size, score_height)
+	self.frame.moves.bg:SetColorTexture(unpack(colors['bg']['score']))
+	self.frame.moves.label = self.frame:CreateFontString(nil, 'ARTWORK')
+	self.frame.moves.label:SetPoint('TOP', self.frame.moves.bg, 'TOP', 0, -10)
+	self.frame.moves.label:SetFontObject(self.ClearSansBold14)
+	self.frame.moves.label:SetTextColor(unpack(colors['fg']['score']))
+	self.frame.moves.label:SetText(L['MOVES'])
+	self.frame.moves.text = self.frame:CreateFontString(nil, 'ARTWORK')
+	self.frame.moves.text:SetPoint('BOTTOM', self.frame.moves.bg, 'BOTTOM', 0, 10)
+	self.frame.moves.text:SetFontObject(self.ClearSansBold14)
+	self.frame.moves.text:SetTextColor(unpack(colors['fg']['score']))
+	self.frame.moves.text:SetText('0')
 
 	-- punch line
-	self.punchline = self.frame:CreateFontString(nil, 'ARTWORK')
-	self.punchline:SetPoint('TOPLEFT', self.title, 'BOTTOMLEFT')
-	self.punchline:SetSize(inner_width, intro_height)
-	self.punchline:SetFontObject(self.ClearSans14)
-	self.punchline:SetTextColor(unpack(colors['fg']['info']))
-	self.punchline:SetJustifyH('LEFT')
-	self.punchline:SetText(L['Join the numbers and get to the |cFFFF00002048|r tile!'])
+	self.frame.punchline = self.frame:CreateFontString(nil, 'ARTWORK')
+	self.frame.punchline:SetPoint('TOPLEFT', self.frame.title, 'BOTTOMLEFT')
+	self.frame.punchline:SetSize(inner_width, intro_height)
+	self.frame.punchline:SetFontObject(self.ClearSans14)
+	self.frame.punchline:SetTextColor(unpack(colors['fg']['info']))
+	self.frame.punchline:SetJustifyH('LEFT')
+	self.frame.punchline:SetText(L['Join the numbers and get to the |cFFFF00002048|r tile!'])
 
 	-- board
-	self.board = self.frame:CreateTexture(nil, 'BACKGROUND', nil, 2)
-	self.board:SetPoint('TOP', self.punchline, 'BOTTOM', 0, -10)
-	self.board:SetSize(board_width, board_height)
-	self.board:SetColorTexture(unpack(colors['bg']['board']))
+	self.frame.board = self.frame:CreateTexture(nil, 'BACKGROUND', nil, 1)
+	self.frame.board:SetPoint('TOP', self.frame.punchline, 'BOTTOM', 0, -10)
+	self.frame.board:SetSize(board_width, board_height)
+	self.frame.board:SetColorTexture(unpack(colors['bg']['board']))
 	local x, y = gutter_size, -gutter_size
 	for row = 1, grid_size do
 		for col = 1, grid_size do
-			local bg = self.frame:CreateTexture(nil, 'BACKGROUND', nil, 3)
-			bg:SetPoint('TOPLEFT', self.board, x, y)
+			local bg = self.frame:CreateTexture(nil, 'BACKGROUND', nil, 2)
+			bg:SetPoint('TOPLEFT', self.frame.board, x, y)
 			bg:SetSize(tile_size, tile_size)
 			bg:SetColorTexture(unpack(colors['bg']['tiles'][0]))
 			x = x + tile_size + gutter_size
@@ -344,7 +371,62 @@ function addon:OnInitialize()
 		x = gutter_size
 	end
 
-	-- tiles
+	-- Pad
+	self.frame.pad = CreateFrame('Frame', nil, self.frame)
+	self.frame.pad:SetPoint('TOP', self.frame.board, 'BOTTOM', 0, -10)
+	self.frame.pad:SetSize(pad_size, pad_size)
+
+	self.frame.pad.b1 = CreateFrame('Button', nil, self.frame.pad, 'UIPanelSquareButton')
+	self.frame.pad.b1:SetPoint('CENTER')
+	self.frame.pad.b1:SetSize(24, 24)
+	SquareButton_SetIcon(self.frame.pad.b1, 'DELETE')
+	self.frame.pad.b1:RegisterForClicks('AnyUp')
+	self.frame.pad.b1:SetScript('OnClick', function(self, ...)
+		addon:handle_key('ENTER')
+	end)
+
+	self.frame.pad.b2 = CreateFrame('Button', nil, self.frame.pad, 'UIPanelSquareButton')
+	self.frame.pad.b2:SetPoint('TOP')
+	self.frame.pad.b2:SetSize(24, 24)
+	SquareButton_SetIcon(self.frame.pad.b2, 'UP')
+	self.frame.pad.b2:RegisterForClicks('AnyUp')
+	self.frame.pad.b2:SetScript('OnClick', function(self, ...)
+		addon:handle_key('UP')
+	end)
+
+	self.frame.pad.b3 = CreateFrame('Button', nil, self.frame.pad, 'UIPanelSquareButton')
+	self.frame.pad.b3:SetPoint('LEFT')
+	self.frame.pad.b3:SetSize(24, 24)
+	SquareButton_SetIcon(self.frame.pad.b3, 'LEFT')
+	self.frame.pad.b3:RegisterForClicks('AnyUp')
+	self.frame.pad.b3:SetScript('OnClick', function(self, ...)
+		addon:handle_key('LEFT')
+	end)
+
+	self.frame.pad.b4 = CreateFrame('Button', nil, self.frame.pad, 'UIPanelSquareButton')
+	self.frame.pad.b4:SetPoint('BOTTOM')
+	self.frame.pad.b4:SetSize(24, 24)
+	SquareButton_SetIcon(self.frame.pad.b4, 'DOWN')
+	self.frame.pad.b4:RegisterForClicks('AnyUp')
+	self.frame.pad.b4:SetScript('OnClick', function(self, ...)
+		addon:handle_key('DOWN')
+	end)
+
+	self.frame.pad.b5 = CreateFrame('Button', nil, self.frame.pad, 'UIPanelSquareButton')
+	self.frame.pad.b5:SetPoint('RIGHT')
+	self.frame.pad.b5:SetSize(24, 24)
+	SquareButton_SetIcon(self.frame.pad.b5, 'RIGHT')
+	self.frame.pad.b5:RegisterForClicks('AnyUp')
+	self.frame.pad.b5:SetScript('OnClick', function(self, ...)
+		addon:handle_key('RIGHT')
+	end)
+
+	if not self.db.global.frame.usePad then
+		self.frame.pad:Hide()
+		self.frame:SetHeight(frame_height - pad_size)
+	end
+
+	-- Special frames: tiles
 	self.tiles = {}
 	local x, y = gutter_size, -gutter_size
 	for row = 1, grid_size do
@@ -353,7 +435,7 @@ function addon:OnInitialize()
 			local t = CreateFrame('Frame', nil, self.frame)
 			self.tiles[row..'x'..col] = t
 
-			t:SetPoint('TOPLEFT', self.board, x, y)
+			t:SetPoint('TOPLEFT', self.frame.board, x, y)
 			t:SetSize(tile_size, tile_size)
 			t:SetBackdrop(plain_bg)
 			t:SetBackdropColor(unpack(colors['bg']['tiles'][0]))
@@ -361,7 +443,7 @@ function addon:OnInitialize()
 			t.s = t:CreateFontString(nil, 'ARTWORK')
 			t.s:SetFontObject(self.ClearSansBold20)
 			t.s:SetAllPoints(t)
-			t.s:SetText(" ")
+			t.s:SetText('')
 
 			-- Each tile must have its own animation groups!
 			t.trans = t:CreateAnimationGroup()
@@ -378,90 +460,71 @@ function addon:OnInitialize()
 		x = gutter_size
 	end
 
-	-- Pad
-	self.pad = {}
-	self.pad.b1 = CreateFrame('button', nil, self.frame, 'UIPanelSquareButton')
-	self.pad.b1:SetPoint('TOP', self.board, 'BOTTOM', 0, -10 - 24)
-	self.pad.b1:SetSize(24, 24)
-	SquareButton_SetIcon(self.pad.b1, 'DELETE')
-	self.pad.b1:RegisterForClicks('AnyUp')
-	self.pad.b1:SetScript('OnClick', function(self, ...)
-		addon:handle_key('RESTART')
+	-- Special frame: Message box
+	self.msgbox = CreateFrame('Frame', nil, self.frame)
+	self.msgbox:SetAllPoints(self.frame.board)
+	self.msgbox:SetBackdrop(plain_bg)
+	self.msgbox:SetBackdropColor(unpack(colors['bg']['msgbox']['msg']))
+	self.msgbox:SetFrameLevel(self.frame:GetFrameLevel() + 10)
+	self.msgbox:EnableKeyboard(true)
+	self.msgbox:Hide()
+	self.msgbox:SetScript('OnKeyDown', function(frame, key)
+		addon:handle_key(key)
 	end)
 
-	self.pad.b2 = CreateFrame('button', nil, self.frame, 'UIPanelSquareButton')
-	self.pad.b2:SetPoint('BOTTOM', self.pad.b1, 'TOP', 0, 0)
-	self.pad.b2:SetSize(24, 24)
-	SquareButton_SetIcon(self.pad.b2, 'UP')
-	self.pad.b2:RegisterForClicks('AnyUp')
-	self.pad.b2:SetScript('OnClick', function(self, ...)
-		addon:handle_key('UP')
-	end)
-
-	self.pad.b3 = CreateFrame('button', nil, self.frame, 'UIPanelSquareButton')
-	self.pad.b3:SetPoint('RIGHT', self.pad.b1, 'LEFT', 0, 0)
-	self.pad.b3:SetSize(24, 24)
-	SquareButton_SetIcon(self.pad.b3, 'LEFT')
-	self.pad.b3:RegisterForClicks('AnyUp')
-	self.pad.b3:SetScript('OnClick', function(self, ...)
-		addon:handle_key('LEFT')
-	end)
-
-	self.pad.b4 = CreateFrame('button', nil, self.frame, 'UIPanelSquareButton')
-	self.pad.b4:SetPoint('TOP', self.pad.b1, 'BOTTOM', 0, 0)
-	self.pad.b4:SetSize(24, 24)
-	SquareButton_SetIcon(self.pad.b4, 'DOWN')
-	self.pad.b4:RegisterForClicks('AnyUp')
-	self.pad.b4:SetScript('OnClick', function(self, ...)
-		addon:handle_key('DOWN')
-	end)
-
-	self.pad.b5 = CreateFrame('button', nil, self.frame, 'UIPanelSquareButton')
-	self.pad.b5:SetPoint('LEFT', self.pad.b1, 'RIGHT', 0, 0)
-	self.pad.b5:SetSize(24, 24)
-	SquareButton_SetIcon(self.pad.b5, 'RIGHT')
-	self.pad.b5:RegisterForClicks('AnyUp')
-	self.pad.b5:SetScript('OnClick', function(self, ...)
-		addon:handle_key('RIGHT')
-	end)
-
-	-- Message box
-	self.msgbox = {}
-	self.msgbox.frame = CreateFrame('Frame', nil, self.frame)
-	self.msgbox.frame:SetAllPoints(self.board)
-	self.msgbox.frame:SetBackdrop(plain_bg)
-	self.msgbox.frame:SetBackdropColor(unpack(colors['bg']['msgbox']['msg']))
-	self.msgbox.frame:SetFrameLevel(self.frame:GetFrameLevel() + 10)
-	self.msgbox.frame:Hide()
-
-	self.msgbox.text = self.msgbox.frame:CreateFontString(nil, 'ARTWORK')
-	self.msgbox.text:SetAllPoints(self.board)
-	self.msgbox.text:SetPoint('TOPLEFT', self.board, 'TOPLEFT', 0, -tile_size)
-	self.msgbox.text:SetPoint('BOTTOMRIGHT', self.board, 'BOTTOMRIGHT', 0, tile_size*2)
+	self.msgbox.text = self.msgbox:CreateFontString(nil, 'ARTWORK')
+	self.msgbox.text:SetAllPoints(self.frame.board)
+	self.msgbox.text:SetPoint('TOPLEFT', self.frame.board, 'TOPLEFT', 0, -tile_size)
+	self.msgbox.text:SetPoint('BOTTOMRIGHT', self.frame.board, 'BOTTOMRIGHT', 0, tile_size*2)
 	self.msgbox.text:SetJustifyV('TOP')
 	self.msgbox.text:SetFontObject(self.ClearSansBold20)
 	self.msgbox.text:SetTextColor(unpack(colors['fg']['msgbox']['msg']))
 
-	self.msgbox.button1 = CreateFrame('button', nil, self.msgbox.frame)
+	self.msgbox.button1 = CreateFrame('button', nil, self.msgbox)
 	self.msgbox.button1:SetPoint('BOTTOM', 0, 10)
 	self.msgbox.button1:SetSize(150, 30)
 	self.msgbox.button1:SetBackdrop(plain_bg)
 	self.msgbox.button1:SetBackdropColor(unpack(colors['bg']['msgbox']['button1']))
 	self.msgbox.button1:SetNormalFontObject(self.ClearSansBold14)
+	self.msgbox.button1:SetHighlightTexture('Interface\\Buttons\\UI-Common-MouseHilight', 'ADD')
 	self.msgbox.button1:RegisterForClicks('AnyUp')
 	self.msgbox.button1:SetScript('OnClick', function(self)
 		addon:handle_message_button(1)
 	end)
 
-	self.msgbox.button2 = CreateFrame('button', nil, self.msgbox.frame)
+	self.msgbox.button2 = CreateFrame('button', nil, self.msgbox)
 	self.msgbox.button2:SetPoint('BOTTOM', self.msgbox.button1, 'TOP', 0, 10)
 	self.msgbox.button2:SetSize(150, 30)
 	self.msgbox.button2:SetBackdrop(plain_bg)
 	self.msgbox.button2:SetBackdropColor(unpack(colors['bg']['msgbox']['button2']))
 	self.msgbox.button2:SetNormalFontObject(self.ClearSansBold14)
+	self.msgbox.button2:SetHighlightTexture('Interface\\Buttons\\UI-Common-MouseHilight', 'ADD')
 	self.msgbox.button2:RegisterForClicks('AnyUp')
 	self.msgbox.button2:SetScript('OnClick', function(self)
 		addon:handle_message_button(2)
+	end)
+
+	self.msgbox.fadein = self.msgbox:CreateAnimationGroup()
+	self.msgbox.fadein.anim = self.msgbox.fadein:CreateAnimation('ALPHA')
+	self.msgbox.fadein.anim:SetDuration(0.2)
+	self.msgbox.fadein.anim:SetStartDelay(0.1)
+	self.msgbox.fadein.anim:SetFromAlpha(0)
+	self.msgbox.fadein.anim:SetToAlpha(1.0)
+	self.msgbox.fadein.anim:SetDuration(0.2)
+	self.msgbox.fadein.anim:SetSmoothing('IN_OUT')
+	self.msgbox.fadein:SetToFinalAlpha(true)
+
+	self.msgbox.fadeout = self.msgbox:CreateAnimationGroup()
+	self.msgbox.fadeout.anim = self.msgbox.fadeout:CreateAnimation('ALPHA')
+	self.msgbox.fadeout.anim:SetDuration(0.2)
+	-- self.msgbox.fadeout.anim:SetStartDelay(0.3)
+	self.msgbox.fadeout.anim:SetFromAlpha(1.0)
+	self.msgbox.fadeout.anim:SetToAlpha(0)
+	self.msgbox.fadeout.anim:SetDuration(0.2)
+	self.msgbox.fadeout.anim:SetSmoothing('NONE')
+	self.msgbox.fadeout:SetToFinalAlpha(true)
+	self.msgbox.fadeout:SetScript('OnFinished', function()
+		addon.msgbox:Hide()
 	end)
 
 	-- Setup options panel
@@ -470,6 +533,12 @@ function addon:OnInitialize()
 
 	-- Enable slash command
 	self:RegisterChatCommand('2048', 'ToggleGameBoard')
+end
+
+------------------------------------------------
+function addon:import_old_settings()
+	self:Print(L['Old settings reset to defaults - sorry about that.'])
+	self.db:ResetDB('Default')
 end
 
 ------------------------------------------------
@@ -484,7 +553,17 @@ function addon:OnEnable()
 		self.lbo = self.lbo or self.ldb:NewDataObject('2048', {
 				type = "launcher",
 				icon = "Interface\\AddOns\\2048\\img\\checkboard",
-				OnClick = function(self, button)
+				OnEnter = function(frame)
+					GameTooltip:SetOwner(frame, 'ANCHOR_BOTTOM')
+					GameTooltip:AddLine('2048')
+					GameTooltip:Show()
+				end,
+				OnLeave = function(frame)
+					if GameTooltip:GetOwner() == frame then
+						GameTooltip:Hide()
+					end
+				end,
+				OnClick = function(frame, button)
 				              if button == 'LeftButton' then
 							      addon:ToggleGameBoard()
 							  elseif button == 'RightButton' then
@@ -540,16 +619,24 @@ function addon:show_message_box(msg)
 		self.msgbox.button2:Hide()
 	end
 
-	self.msgbox.frame:Show()
-	UIFrameFadeIn(self.msgbox.frame, 0.3, 0, 0.9)
+	-- Show the frame
+	self.msgbox:SetAlpha(0)
+	self.msgbox:Show()
+	self.msgbox.fadein:Play()
+end
+
+------------------------------------------------
+function addon:msgbox_is_shown()
+	return (self.msgbox:IsShown() and not self.msgbox.fadeout:IsPlaying()) or self.msgbox.fadein:IsPlaying()
 end
 
 ------------------------------------------------
 function addon:handle_message_button(button)
 
 	-- Hide the frame
-	self.msgbox.frame:Hide()
+	self.msgbox.fadeout:Play()
 
+	-- Handle the button
 	if self.msgbox.q == 'MSG_WON' then
 		if button == 1 then
 			self.game:new_game()
@@ -576,7 +663,7 @@ end
 ------------------------------------------------
 function addon:update()
 
-	if self.msgbox.frame:IsShown() then return end
+	if self:msgbox_is_shown() then return end
 
 	self:update_scores()
 	self:update_board()
@@ -586,9 +673,9 @@ end
 function addon:update_scores()
 	local moves, score, best = self.game:get_scores()
 
-	self.moves.text:SetText(moves)
-	self.score.text:SetText(score)
-	self.best.text:SetText(best)
+	self.frame.moves.text:SetText(moves)
+	self.frame.score.text:SetText(score)
+	self.frame.best.text:SetText(best)
 end
 
 ------------------------------------------------
@@ -625,12 +712,14 @@ local _keys = { LEFT = true, RIGHT = true, UP = true, DOWN = true }
 local _anims_count = 0
 function addon:handle_key(key)
 
-	if self.msgbox.frame:IsShown() then return end
-
 	if key == 'ESCAPE' then
+		-- Works whether the message_box is shown or not
 		self:ToggleGameBoard()
+	elseif self:msgbox_is_shown() then
+		return
+	end
 
-	elseif key == 'RESTART' then
+	if key == 'ENTER' then
 		self:show_message_box('MSG_RESTART')
 
 	elseif _keys[key] then
