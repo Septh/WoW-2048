@@ -70,9 +70,7 @@ function game:new_game()
 	end
 
 	-- Add a few cells to start with
-	for i = 1, start_tiles do
-		self:add_random_cell()
-	end
+	self:add_random_cells(start_tiles)
 end
 
 ------------------------------------------------
@@ -133,7 +131,7 @@ end
 -- Set a random cell to a random value
 ------------------------------------------------
 local _empty = {}
-function game:add_random_cell()
+function game:add_random_cells(num_cells)
 
 	-- Collect and count empty cells
 	wipe(_empty)
@@ -145,11 +143,15 @@ function game:add_random_cell()
 		end
 	end
 
-	if #_empty > 0 then
-		local random_cell  = math.ceil(math.random() * #_empty)
-		local random_value = (math.random() < 0.7) and 2 or 4
+	num_cells = num_cells or 1
+	if #_empty >= num_cells then
+		for i = 1, num_cells do
+			local random_cell  = math.ceil(math.random() * #_empty)
+			local random_value = (math.random() < 0.7) and 2 or 4
 
-		self:set_cell_value(_empty[random_cell].row, _empty[random_cell].col, random_value)
+			self:set_cell_value(_empty[random_cell].row, _empty[random_cell].col, random_value)
+			table.remove(_empty, random_cell)
+		end
 		return true
 	end
 	return false
@@ -193,7 +195,6 @@ function game:is_over()
 end
 
 ------------------------------------------------
--- Continue playing
 function game:keep_playing()
 	self.cont = true
 end
@@ -260,7 +261,7 @@ function game:move_cells(direction)
 		-- Traverse the grid in the right direction
 		local source
 		if direction == 'UP' then
-			for row = 2, self.size do				-- skip row #1 since it can't move up
+			for row = 2, self.size do				-- Loop from top to bottom, skipping row #1 since it can't move up
 				for col = 1, self.size do
 					source = self.grid[row][col]
 					if source.val > 0 then
@@ -269,7 +270,7 @@ function game:move_cells(direction)
 				end
 			end
 		elseif direction == 'DOWN' then
-			for row = self.size-1, 1, -1 do			-- skip last row since it can't move down
+			for row = self.size-1, 1, -1 do			-- Loop from bottom to up, skipping last row since it can't move down
 				for col = 1, self.size do
 					source = self.grid[row][col]
 					if source.val > 0 then
@@ -279,7 +280,7 @@ function game:move_cells(direction)
 			end
 		elseif direction == 'LEFT' then
 			for row = 1, self.size do
-				for col = 2, self.size do			-- skip col #1 since it can't move left
+				for col = 2, self.size do			-- Loop from left to right, skipping col #1 since it can't move left
 					source = self.grid[row][col]
 					if source.val > 0 then
 						move_cell(source, find_dest(source, 0, -1))
@@ -288,7 +289,7 @@ function game:move_cells(direction)
 			end
 		elseif direction == 'RIGHT' then
 			for row = 1, self.size do
-				for col = self.size-1, 1, -1 do		-- skip last col since it can't move right
+				for col = self.size-1, 1, -1 do		-- Loop from right to left, skipping last col since it can't move right
 					source = self.grid[row][col]
 					if source.val > 0 then
 						move_cell(source, find_dest(source, 0, 1))
@@ -321,5 +322,5 @@ function game:next_turn()
 	end
 
 	-- Add a new cell, check for game over
-	self.over = not (self:add_random_cell() and self:moves_available())
+	self.over = not (self:add_random_cells(1) and self:moves_available())
 end
