@@ -21,6 +21,7 @@ L['Yes'] = true
 L['No'] = true
 
 L['Enable keyboard use'] = true
+L['Enable pad'] = true
 L['Window scale'] = true
 L['Join the numbers and get to the |cFFFF00002048|r tile!'] = true
 
@@ -36,7 +37,7 @@ if L then
 	L['BEST'] = 'TOP'
 
 	L['You won!'] = 'Gagné !'
-	L['Game over!'] = 'Fini !'
+	L['Game over!'] = 'Perdu !'
 	L['Restart?'] = 'Recommencer ?'
 	L['New game'] = 'Nouveau jeu'
 	L['Restart'] = 'Recommencer'
@@ -45,6 +46,7 @@ if L then
 	L['No'] = 'Non'
 
 	L['Enable keyboard use'] = 'Utiliser le clavier'
+	L['Enable pad'] = 'Utiliser pavé de déplacement'
 	L['Window scale'] = 'Taille de la fenêtre'
 	L['Join the numbers and get to the |cFFFF00002048|r tile!'] ='Tentez d\'obtenir le nombre |cFFFF00002048|r !'
 end
