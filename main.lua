@@ -3,23 +3,23 @@ local addon = LibStub('AceAddon-3.0'):NewAddon('2048', 'AceConsole-3.0', 'AceTim
 local L     = LibStub('AceLocale-3.0'):GetLocale('2048')
 
 -- Game defaults
-local grid_size    = 4
+local grid_size     = 4
 
 -- UI Elements
-local tile_size    = 60
-local gutter_size  = 8
-local tile_gutter  = tile_size + gutter_size
-local board_width  = (tile_size * grid_size) + (gutter_size * (grid_size + 1))
-local board_height = board_width
-local title_height = 60
-local score_height = 60
-local intro_height = 30
-local pad_size     = 24 * 3
-local inner_width  = board_width
-local inner_height = math.max(title_height, score_height) + intro_height + 10 + board_height + 10 + pad_size
-local border_size  = 10
-local frame_width  = inner_width + (border_size * 2)
-local frame_height = inner_height + (border_size * 2)	-- Full height, including pad
+local tile_size     = 60
+local gutter_size   = 8
+local tile_distance = tile_size + gutter_size			-- The distance a tile moves on the board
+local board_width   = (tile_size * grid_size) + (gutter_size * (grid_size + 1))
+local board_height  = board_width
+local title_height  = 60
+local score_height  = 60
+local intro_height  = 30
+local pad_size      = 24 * 3
+local inner_width   = board_width
+local inner_height  = math.max(title_height, score_height) + intro_height + 10 + board_height + 10 + pad_size
+local border_size   = 10
+local frame_width   = inner_width + (border_size * 2)
+local frame_height  = inner_height + (border_size * 2)	-- Full height, including pad
 
 -- Message box
 local messages = {
@@ -30,7 +30,7 @@ local messages = {
 
 -- Textures and colors
 local plain_bg = {
-	bgFile = "Interface\\Buttons\\White8x8",
+	bgFile = 'Interface\\Buttons\\White8x8',
 }
 
 local colors = {
@@ -103,8 +103,8 @@ local db_defaults = {
 		},
 		game = {
 			best  = 0,
-			moves = 0,
 			score = 0,
+			moves = 0,
 			over  = false,
 			won   = false,
 			cont  = false,
@@ -129,7 +129,7 @@ local config_table = {
 		version = {
 			order = 2,
 			type  = 'description',
-			name  = 'Version 1.0.0' -- GetAddOnMetadata('2048', 'Version') won't work :(
+			name  = 'Version 1.1.0' -- GetAddOnMetadata('2048', 'Version') won't work :(
 		},
 
 		author = {
@@ -140,32 +140,32 @@ local config_table = {
 
 		sep = {
 			order = 4,
-			type = 'header',
-			name = ''
+			type  = 'header',
+			name  = ''
 		},
 
 		useKeyboard = {
 			order = 10,
-			type = 'toggle',
-			name = L['Enable keyboard use'],
-			get = function(info) return addon.db.global.frame.useKeyboard end,
-			set = function(info, value)
+			type  = 'toggle',
+			name  = L['Enable keyboard use'],
+			get   = function(info) return addon.db.global.frame.useKeyboard end,
+			set   = function(info, value)
 				addon.db.global.frame.useKeyboard = value
 				addon.frame:EnableKeyboard(value)
 			end,
 		},
 		useKeyboard_crlf = {
 			order = 11,
-			type = 'description',
-			name = ''
+			type  = 'description',
+			name  = ''
 		},
 
 		usePad = {
 			order = 15,
-			type = 'toggle',
-			name = L['Enable pad'],
-			get = function(info) return addon.db.global.frame.usePad end,
-			set = function(info, value)
+			type  = 'toggle',
+			name  = L['Enable pad'],
+			get   = function(info) return addon.db.global.frame.usePad end,
+			set   = function(info, value)
 				addon.db.global.frame.usePad = value
 				if value then
 					addon.frame:SetHeight(frame_height)
@@ -178,20 +178,20 @@ local config_table = {
 		},
 		usePad_crlf = {
 			order = 16,
-			type = 'description',
-			name = ''
+			type  = 'description',
+			name  = ''
 		},
 
 		scale = {
 			order = 20,
-			type = 'range',
-			name = L['Window scale'],
-			min = 0.3,
-			max = 2.0,
-			step = 0.05,
+			type  = 'range',
+			name  = L['Window scale'],
+			min   = 0.3,
+			max   = 2.0,
+			step  = 0.05,
 			width = 'full',
-			get = function(info) return addon.db.global.frame.scale end,
-			set = function(info, value)
+			get   = function(info) return addon.db.global.frame.scale end,
+			set   = function(info, value)
 				addon.db.global.frame.scale = value
 				addon.frame:SetScale(value)
 				end,
@@ -207,12 +207,12 @@ function addon:OnInitialize()
 
 	-- Load or create SavedVariables
 	self.db = LibStub('AceDB-3.0'):New('DB2048', db_defaults, true)
-	if math.floor(self.db.global.version or 0) ~= 1 then self:import_old_settings() end
+	if math.floor(self.db.global.version or 0) < 1 then self:import_old_settings() end
 
 	-- Prepare the fonts
 	local function make_font(name, style, size)
 		local f = CreateFont(name)
-		f:SetFont('Interface\\AddOns\\2048\\fonts\\ClearSans\\ClearSans-'..style..'.ttf', size)
+		f:SetFont('Interface\\AddOns\\2048\\fonts\\ClearSans\\ClearSans-' .. style .. '.ttf', size)
 		f:SetTextColor(1, 1, 1, 1)
 		return f
 	end
@@ -236,15 +236,15 @@ function addon:OnInitialize()
 	self.frame:Hide()
 
 	self.frame.fadein = self.frame:CreateAnimationGroup()
-	self.frame.fadein.anim = self.frame.fadein:CreateAnimation('ALPHA')
+	self.frame.fadein.anim = self.frame.fadein:CreateAnimation('Alpha')
 	self.frame.fadein.anim:SetFromAlpha(0.5)
 	self.frame.fadein.anim:SetToAlpha(1.0)
 	self.frame.fadein.anim:SetDuration(0.2)
-	self.frame.fadein.anim:SetSmoothing('NONE')
+	self.frame.fadein.anim:SetSmoothing('IN')
 	self.frame.fadein:SetToFinalAlpha(true)
 
 	self.frame.fadeout = self.frame:CreateAnimationGroup()
-	self.frame.fadeout.anim = self.frame.fadeout:CreateAnimation('ALPHA')
+	self.frame.fadeout.anim = self.frame.fadeout:CreateAnimation('Alpha')
 	self.frame.fadeout.anim:SetFromAlpha(1.0)
 	self.frame.fadeout.anim:SetToAlpha(0.5)
 	self.frame.fadeout.anim:SetDuration(0.2)
@@ -260,8 +260,8 @@ function addon:OnInitialize()
 			frame:EnableKeyboard(false)
 		end
 	end)
-	self.frame:SetScript('OnEnter', function(frame)
-		if frame.skipNextEnter then frame.skipNextEnter = nil; return end
+	self.frame:SetScript('OnEnter', function(frame, motion)
+		if not motion or frame.skipNextEnter then frame.skipNextEnter = nil; return end
 		frame.fadeout:Stop()
 		frame.fadein:Play()
 		frame:EnableKeyboard(addon.db.global.frame.useKeyboard)
@@ -505,18 +505,22 @@ function addon:OnInitialize()
 	end)
 
 	self.msgbox.fadein = self.msgbox:CreateAnimationGroup()
-	self.msgbox.fadein.anim = self.msgbox.fadein:CreateAnimation('ALPHA')
-	self.msgbox.fadein.anim:SetDuration(0.2)
-	self.msgbox.fadein.anim:SetStartDelay(0.1)
+	self.msgbox.fadein.anim = self.msgbox.fadein:CreateAnimation('Alpha')
+	self.msgbox.fadein.anim:SetDuration(0.5)
+	-- self.msgbox.fadein.anim:SetStartDelay(0.2)
 	self.msgbox.fadein.anim:SetFromAlpha(0)
 	self.msgbox.fadein.anim:SetToAlpha(1.0)
 	self.msgbox.fadein.anim:SetDuration(0.2)
-	self.msgbox.fadein.anim:SetSmoothing('IN_OUT')
+	self.msgbox.fadein.anim:SetSmoothing('NONE')
 	self.msgbox.fadein:SetToFinalAlpha(true)
+	self.msgbox.fadein:SetScript('OnPlay', function()
+		addon.msgbox:SetAlpha(0)
+		addon.msgbox:Show()
+	end)
 
 	self.msgbox.fadeout = self.msgbox:CreateAnimationGroup()
-	self.msgbox.fadeout.anim = self.msgbox.fadeout:CreateAnimation('ALPHA')
-	self.msgbox.fadeout.anim:SetDuration(0.2)
+	self.msgbox.fadeout.anim = self.msgbox.fadeout:CreateAnimation('Alpha')
+	self.msgbox.fadeout.anim:SetDuration(0.5)
 	-- self.msgbox.fadeout.anim:SetStartDelay(0.3)
 	self.msgbox.fadeout.anim:SetFromAlpha(1.0)
 	self.msgbox.fadeout.anim:SetToAlpha(0)
@@ -525,11 +529,12 @@ function addon:OnInitialize()
 	self.msgbox.fadeout:SetToFinalAlpha(true)
 	self.msgbox.fadeout:SetScript('OnFinished', function()
 		addon.msgbox:Hide()
+		addon.msgbox:SetAlpha(0)
 	end)
 
 	-- Setup options panel
-	LibStub("AceConfig-3.0"):RegisterOptionsTable('2048', config_table)
-    LibStub("AceConfigDialog-3.0"):AddToBlizOptions('2048')
+	LibStub('AceConfig-3.0'):RegisterOptionsTable('2048', config_table)
+    LibStub('AceConfigDialog-3.0'):AddToBlizOptions('2048')
 
 	-- Enable slash command
 	self:RegisterChatCommand('2048', 'ToggleGameBoard')
@@ -542,8 +547,6 @@ function addon:import_old_settings()
 end
 
 ------------------------------------------------
--- Start a new game
-------------------------------------------------
 function addon:OnEnable()
 
 	-- Initialize LDB if found
@@ -551,8 +554,8 @@ function addon:OnEnable()
 	self.ldb = self.ldb or LibStub('LibDataBroker-1.1', true)
 	if self.ldb then
 		self.lbo = self.lbo or self.ldb:NewDataObject('2048', {
-				type = "launcher",
-				icon = "Interface\\AddOns\\2048\\img\\checkboard",
+				type = 'launcher',
+				icon = 'Interface\\AddOns\\2048\\img\\checkboard',
 				OnEnter = function(frame)
 					GameTooltip:SetOwner(frame, 'ANCHOR_BOTTOM')
 					GameTooltip:AddLine('2048')
@@ -619,14 +622,19 @@ function addon:show_message_box(msg)
 		self.msgbox.button2:Hide()
 	end
 
-	-- Show the frame
-	self.msgbox:SetAlpha(0)
-	self.msgbox:Show()
+	-- Simply play the anim, the OnPlay script will show the frame
 	self.msgbox.fadein:Play()
 end
 
 ------------------------------------------------
+function addon:hide_message_box()
+	-- Simply play the anim, the OnFinished script will hide the frame
+	self.msgbox.fadeout:Play()
+end
+
+------------------------------------------------
 function addon:msgbox_is_shown()
+	 -- Shown, showing or not finished hidding
 	return (self.msgbox:IsShown() and not self.msgbox.fadeout:IsPlaying()) or self.msgbox.fadein:IsPlaying()
 end
 
@@ -634,12 +642,14 @@ end
 function addon:handle_message_button(button)
 
 	-- Hide the frame
-	self.msgbox.fadeout:Play()
+	self:hide_message_box()
 
 	-- Handle the button
 	if self.msgbox.q == 'MSG_WON' then
 		if button == 1 then
+			-- Can't call next_turn() here since it would add a new tile
 			self.game:new_game()
+			self.game:save_state(self.db.global.game)
 			self:update()
 		else
 			self.game:keep_playing()
@@ -647,12 +657,16 @@ function addon:handle_message_button(button)
 		end
 
 	elseif self.msgbox.q == 'MSG_LOST' then
+		-- Ditto
 		self.game:new_game()
+		self.game:save_state(self.db.global.game)
 		self:update()
 
 	elseif self.msgbox.q == 'MSG_RESTART' then
 		if button == 1 then
+			-- Ditto
 			self.game:new_game()
+			self.game:save_state(self.db.global.game)
 			self:update()
 		end
 	end
@@ -730,25 +744,26 @@ function addon:handle_key(key)
 		if #moves > 0 then
 			_anims_count = 0
 			for xx, move in ipairs(moves) do
+				local p_row, p_col, n_row, n_col, n_val = move.p_row, move.p_col, move.n_row, move.n_col, move.n_val
 
-				local p_tile = self.tiles[move.p_row..'x'..move.p_col]
-				local n_tile = self.tiles[move.n_row..'x'..move.n_col]
+				local p_tile = self.tiles[p_row..'x'..p_col]
+				local n_tile = self.tiles[n_row..'x'..n_col]
 
-				-- Transition the tiles from their previous position to the new
+				-- Transition the tiles from their previous position to the new one
 				p_tile:SetFrameLevel(p_tile:GetFrameLevel() + 2)	-- Make sure moving tiles are above the others
 				p_tile.trans.anim:SetDuration(0.1)
-				p_tile.trans.anim:SetOffset((move.n_col - move.p_col) * (tile_size + gutter_size), (move.n_row - move.p_row) * (tile_size + gutter_size) * -1)
+				p_tile.trans.anim:SetOffset((n_col - p_col) * tile_distance, -((n_row - p_row) * tile_distance))
 				p_tile.trans.anim:SetStartDelay(xx * 0.01)			--- nicer
 				p_tile.trans.anim:SetScript('OnFinished', function()
 					_anims_count = _anims_count - 1
 
 					-- Update the old position
-					addon.game:set_cell_value(move.p_row, move.p_col, 0)
-					addon:update_tile(move.p_row, move.p_col)
+					addon.game:set_cell_value(p_row, p_col, 0)
+					addon:update_tile(p_row, p_col)
 
 					-- then the new one
-					addon.game:set_cell_value(move.n_row, move.n_col, move.n_val)
-					addon:update_tile(move.n_row, move.n_col)
+					addon.game:set_cell_value(n_row, n_col, n_val)
+					addon:update_tile(n_row, n_col)
 
 					-- Pulse?
 					if move.merged then
