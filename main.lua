@@ -549,30 +549,55 @@ end
 ------------------------------------------------
 function addon:OnEnable()
 
-	-- Initialize LDB if found
-	-- (done here since we don't embed the LDB library and it may not be available at OnInitialize() time)
+	-- Initialize LDB if found (done here since we don't embed
+	-- the LDB library and it may not be available at OnInitialize() time)
 	self.ldb = self.ldb or LibStub('LibDataBroker-1.1', true)
 	if self.ldb then
+
+		-- Texture for LDB frame highlighting
+		if not self.highlightFrame then
+			self.highlightFrame = CreateFrame('Frame')
+			self.highlightFrame:Hide()
+		end
+		if not self.highlightTexture then
+			self.highlightTexture = self.highlightFrame:CreateTexture(nil, 'OVERLAY')
+			self.highlightTexture:SetTexture('Interface\\QuestFrame\\UI-QuestTitleHighlight')
+			self.highlightTexture:SetBlendMode('ADD')
+			self.highlightTexture:Hide()
+		end
+
 		self.lbo = self.lbo or self.ldb:NewDataObject('2048', {
 				type = 'launcher',
 				icon = 'Interface\\AddOns\\2048\\img\\checkboard',
-				OnEnter = function(frame)
-					GameTooltip:SetOwner(frame, 'ANCHOR_BOTTOM')
+				OnEnter = function(LDBFrame)
+					-- Highlight the LDB frame
+					addon.highlightTexture:SetParent(LDBFrame)
+					addon.highlightTexture:SetAllPoints(LDBFrame)
+					addon.highlightTexture:Show()
+
+					-- Show the tooltip
+					GameTooltip:SetOwner(LDBFrame, 'ANCHOR_BOTTOM')
 					GameTooltip:AddLine('2048')
 					GameTooltip:Show()
 				end,
-				OnLeave = function(frame)
-					if GameTooltip:GetOwner() == frame then
+				OnLeave = function(LDBFrame)
+					if GameTooltip:GetOwner() == LDBFrame then
+						-- Hide the tooltip
 						GameTooltip:Hide()
+
+						-- Turn highlighting off
+						addon.highlightTexture:Hide()
+						addon.highlightTexture:SetParent(addon.highlightFrame)
 					end
 				end,
-				OnClick = function(frame, button)
-				              if button == 'LeftButton' then
-							      addon:ToggleGameBoard()
-							  elseif button == 'RightButton' then
-								  InterfaceOptionsFrame_OpenToCategory('2048')
-							  end
-						  end
+				OnClick = function(LDBFrame, button)
+					if button == 'LeftButton' then
+						addon:ToggleGameBoard()
+					elseif button == 'RightButton' then
+						InterfaceOptionsFrame_OpenToCategory('2048')
+						InterfaceOptionsFrame_OpenToCategory('2048')	-- Twice
+					end
+				end
 		})
 	end
 
