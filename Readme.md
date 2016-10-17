@@ -20,15 +20,17 @@ Comments are disabled on Curse.com and on Curseforge.com. Should you need any he
 
 
 ##Changelog
-**Version 1.1.0** - 09/29/2016
 
+**Version 1.1.1** - 10/17/2016
+* Highlight LDB frame on tooltip show
+
+**Version 1.1.0** - 09/29/2016
 * Minor code tweaks
 * Added an option to hide the visual pad
 * Added support for the `Enter` key to restart the game
 
 
 **Version 1.0.0** - 09/27/2016
-
 * Initial release.
 * Settings and scores from previous (beta) versions are incompatible and thus reset on first load. Sorry about that.
 
