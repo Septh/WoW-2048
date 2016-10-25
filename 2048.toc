@@ -1,8 +1,8 @@
-## Interface: 70000
+## Interface: 70100
 ## Title: 2048
 ## Notes: Play while you wait!
 ## Notes-frFR: Jouez au 2048 entre deux raids !
-## Version: 1.1.1
+## Version: 1.1.2
 ## Author: Septh
 ## SavedVariables: DB2048
 ## X-Category: Minigames

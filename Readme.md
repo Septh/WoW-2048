@@ -23,6 +23,8 @@ I rarely read comments here on Curse.com; should you need any help, you'd better
 
 ## Change Log
 
+* Version 1.1.2 - 10/26/2016
+	* Toc update for 7.1
 * Version 1.1.1 - 10/17/2016
 	* Internal enhancements
 	* Highlight LDB frame on show tooltip
