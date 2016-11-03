@@ -577,7 +577,17 @@ function addon:OnEnable()
 					end
 
 					-- Show the tooltip
-					GameTooltip:SetOwner(LDBFrame, 'ANCHOR_BOTTOM')
+					local x, y, w, h = LDBFrame:GetRect()
+					local sw, sh = UIParent:GetSize()
+					local p
+
+					if (y + h) < (sh / 2)  then
+						p = 'ANCHOR_TOP'
+					else
+						p = 'ANCHOR_BOTTOM'
+					end
+
+					GameTooltip:SetOwner(LDBFrame, p)
 					GameTooltip:AddLine('2048')
 					GameTooltip:Show()
 				end,
