@@ -563,17 +563,18 @@ function addon:OnEnable()
 			self.highlightTexture = self.highlightFrame:CreateTexture(nil, 'OVERLAY')
 			self.highlightTexture:SetTexture('Interface\\QuestFrame\\UI-QuestTitleHighlight')
 			self.highlightTexture:SetBlendMode('ADD')
-			self.highlightTexture:Hide()
 		end
 
 		self.lbo = self.lbo or self.ldb:NewDataObject('2048', {
 				type = 'launcher',
 				icon = 'Interface\\AddOns\\2048\\img\\checkboard',
 				OnEnter = function(LDBFrame)
-					-- Highlight the LDB frame
-					addon.highlightTexture:SetParent(LDBFrame)
-					addon.highlightTexture:SetAllPoints(LDBFrame)
-					addon.highlightTexture:Show()
+					-- Highlight the LDB frame if not using Bazooka
+					local LDBFrameName = LDBFrame:GetName() or ''
+					if not LDBFrameName:find('Bazooka', 1) then
+						addon.highlightTexture:SetParent(LDBFrame)
+						addon.highlightTexture:SetAllPoints(LDBFrame)
+					end
 
 					-- Show the tooltip
 					GameTooltip:SetOwner(LDBFrame, 'ANCHOR_BOTTOM')
@@ -586,7 +587,6 @@ function addon:OnEnable()
 						GameTooltip:Hide()
 
 						-- Turn highlighting off
-						addon.highlightTexture:Hide()
 						addon.highlightTexture:SetParent(addon.highlightFrame)
 					end
 				end,
