@@ -1,4 +1,4 @@
-## Interface: 70200
+## Interface: 70300
 ## Title: 2048
 ## Notes: Play while you wait!
 ## Notes-frFR: Jouez au 2048 entre deux raids !
