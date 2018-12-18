@@ -1,5 +1,7 @@
 ## Change Log
 
+* Version 1.1.7 - 2018/12/18
+	* Toc update for 8.1
 * Version 1.1.6 - 2018/07/19
 	* Toc update for 8.0
 	* Using the latest Ace3 files (r1182)
