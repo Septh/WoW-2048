@@ -1,5 +1,7 @@
 ## Change Log
 
+* Version 1.1.8 - 2019/07/14
+	* Toc update for 8.2
 * Version 1.1.7 - 2018/12/18
 	* Toc update for 8.1
 * Version 1.1.6 - 2018/07/19
